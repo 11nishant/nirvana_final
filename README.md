@@ -35,7 +35,6 @@ Open `http://localhost:5173`.
 | `package-lock.json` | Root lockfile (if present) |
 | `client/package-lock.json` | Client lockfile (if present) |
 | `railway.toml` | Railway build/start |
-| `.github/workflows/` | CI (build on every push to `main`) |
 | `.gitignore` | Ignores `node_modules`, `dist`, etc. |
 | `.env.example` | Env template |
 | `README.md` | This file |
@@ -82,7 +81,7 @@ git push -u origin main
 GitHub does **not** accept account passwords over HTTPS anymore. Use one of these:
 
 - **Git Credential Manager** (often installed with Git for Windows): the first `git push` may open a browser to sign in to GitHub.
-- **Personal Access Token (classic):** [GitHub → Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens) → generate with **repo** scope. When `git` asks for a password, paste the token.
+- **Personal Access Token (classic):** [GitHub → Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens) → generate with **repo** scope. When `git` asks for a password, paste the token. If you add **GitHub Actions** workflows under `.github/workflows/`, also enable the **workflow** scope on the token (otherwise GitHub rejects the push).
 
 If you see `remote origin already exists`, skip `git remote add` — only run `git push -u origin main`.
 
