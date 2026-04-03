@@ -5,7 +5,7 @@ type Mode = "binary" | "multiclass";
 type ApiOk = {
   ok: true;
   input: {
-    filename: string;
+    filenames: string[];
     bytes: number;
     classificationMode: Mode;
     metadataFilename: string | null;
@@ -30,7 +30,7 @@ type ApiOk = {
 
 export default function App() {
   const [mode, setMode] = useState<Mode>("binary");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<FileList | null>(null);
   const [metadataFile, setMetadataFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,14 +40,16 @@ export default function App() {
     e.preventDefault();
     setError(null);
     setData(null);
-    if (!file) {
-      setError("Upload a T1-weighted MRI scan (NIfTI, DICOM folder/zip, etc. — per problem statement).");
+    if (!files || files.length === 0) {
+      setError("Upload DICOM files (.dcm) for brain scan preprocessing.");
       return;
     }
     setLoading(true);
     try {
       const fd = new FormData();
-      fd.append("scan", file);
+      for (let i = 0; i < files.length; i++) {
+        fd.append("scans", files[i]);
+      }
       fd.append("classificationMode", mode);
       if (metadataFile) fd.append("metadata", metadataFile);
       const res = await fetch("/api/predict", { method: "POST", body: fd });
@@ -102,13 +104,14 @@ export default function App() {
           </label>
 
           <label className="field">
-            <span className="label">T1-weighted MRI scan</span>
+            <span className="label">DICOM files</span>
             <input
               type="file"
-              accept=".dcm,.zip,.nii,.gz,.npy,image/*,*/*"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              multiple
+              accept=".dcm"
+              onChange={(e) => setFiles(e.target.files)}
             />
-            {file && <p className="filehint">{file.name}</p>}
+            {files && <p className="filehint">{Array.from(files).map(f => f.name).join(', ')}</p>}
           </label>
 
           <label className="field">
@@ -134,8 +137,8 @@ export default function App() {
             <h2>Screening result</h2>
             <dl className="dl">
               <div>
-                <dt>Scan</dt>
-                <dd>{data.input.filename}</dd>
+                <dt>Scans</dt>
+                <dd>{data.input.filenames.join(', ')}</dd>
               </div>
               {data.input.metadataFilename && (
                 <div>

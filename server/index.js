@@ -3,6 +3,9 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
+const os = require("os");
+const { exec } = require("child_process");
+const fsPromises = require("fs").promises;
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -10,7 +13,7 @@ const upload = multer({
 });
 
 const uploadPredict = upload.fields([
-  { name: "scan", maxCount: 1 },
+  { name: "scans", maxCount: 100 },
   { name: "metadata", maxCount: 1 },
 ]);
 
@@ -68,37 +71,71 @@ function pseudoPredict(classificationMode, fileMeta, metaFile) {
   };
 }
 
-app.post("/api/predict", uploadPredict, (req, res) => {
+app.post("/api/predict", uploadPredict, async (req, res) => {
   try {
     const classificationMode = req.body.classificationMode;
     if (classificationMode !== "binary" && classificationMode !== "multiclass") {
       return res.status(400).json({ error: "classificationMode must be binary or multiclass" });
     }
-    const scan = req.files?.scan?.[0];
+    const scans = req.files?.scans;
     const metaFile = req.files?.metadata?.[0];
-    if (!scan) {
-      return res.status(400).json({ error: "No scan uploaded (field name: scan)" });
+    if (!scans || scans.length === 0) {
+      return res.status(400).json({ error: "No scans uploaded (field name: scans)" });
     }
-    const preprocessing = {
-      status: "completed",
-      message:
-        "Pseudo: your backend should run skull strip, normalization, resize → .npy here.",
-    };
-    const result = pseudoPredict(
-      classificationMode,
-      { originalname: scan.originalname, size: scan.size },
-      metaFile
-    );
-    res.json({
-      ok: true,
-      input: {
-        filename: scan.originalname,
-        bytes: scan.size,
+    if (!metaFile) {
+      return res.status(400).json({ error: "No metadata uploaded (field name: metadata)" });
+    }
+
+    // create temp dirs
+    const tempDir = os.tmpdir();
+    const dataPath = path.join(tempDir, `data_${Date.now()}`);
+    const csvPath = path.join(tempDir, `meta_${Date.now()}.csv`);
+    const outputPath = path.join(tempDir, `output_${Date.now()}`);
+
+    await fsPromises.mkdir(dataPath, { recursive: true });
+    await fsPromises.mkdir(outputPath, { recursive: true });
+
+    // save scans
+    for (const scan of scans) {
+      const filePath = path.join(dataPath, scan.originalname);
+      await fsPromises.writeFile(filePath, scan.buffer);
+    }
+
+    // save metadata
+    await fsPromises.writeFile(csvPath, metaFile.buffer);
+
+    // run python script
+    const pythonCmd = `python "${path.join(__dirname, 'preprocess.py')}" "${dataPath}" "${csvPath}" "${outputPath}"`;
+    exec(pythonCmd, async (error, stdout, stderr) => {
+      if (error) {
+        console.error('Preprocessing error:', error);
+        console.error('stderr:', stderr);
+        return res.status(500).json({ error: "Preprocessing failed", details: stderr });
+      }
+      console.log('Preprocessing stdout:', stdout);
+
+      // now, the .npy are in outputPath
+      const preprocessing = {
+        status: "completed",
+        message: "Preprocessing completed, .npy generated",
+        outputPath,
+      };
+      const result = pseudoPredict(
         classificationMode,
-        metadataFilename: metaFile ? metaFile.originalname : null,
-      },
-      preprocessing,
-      result,
+        { originalname: 'processed', size: 0 },
+        metaFile
+      );
+      res.json({
+        ok: true,
+        input: {
+          filenames: scans.map(s => s.originalname),
+          bytes: scans.reduce((sum, s) => sum + s.size, 0),
+          classificationMode,
+          metadataFilename: metaFile.originalname,
+        },
+        preprocessing,
+        result,
+      });
     });
   } catch (e) {
     console.error(e);
