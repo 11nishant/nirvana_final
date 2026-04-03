@@ -1,0 +1,19 @@
+{
+  "name": "nirvana_final",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "postinstall": "cd client && npm install",
+    "build": "cd client && npm run build",
+    "start": "node server/index.js",
+    "dev": "node server/dev.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
