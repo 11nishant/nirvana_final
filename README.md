@@ -35,6 +35,7 @@ Open `http://localhost:5173`.
 | `package-lock.json` | Root lockfile (if present) |
 | `client/package-lock.json` | Client lockfile (if present) |
 | `railway.toml` | Railway build/start |
+| `.github/workflows/` | CI (build on every push to `main`) |
 | `.gitignore` | Ignores `node_modules`, `dist`, etc. |
 | `.env.example` | Env template |
 | `README.md` | This file |
@@ -69,17 +70,23 @@ git add .
 git commit -m "Initial Task 4 web app: Express API + Vite UI + Railway config"
 ```
 
-### 2) Connect GitHub and push
+### 2) Push to GitHub (remote is already configured)
 
-If [github.com/11nishant/nirvana_final](https://github.com/11nishant/nirvana_final) is empty or you want this folder to be the source:
+The local repo already has `origin` → `https://github.com/11nishant/nirvana_final.git`. From this folder run:
 
 ```bash
-git branch -M main
-git remote add origin https://github.com/11nishant/nirvana_final.git
+cd path\to\nirvana_final
 git push -u origin main
 ```
 
-If the remote already has commits, use `git pull origin main --rebase` (or merge) before pushing, or force-push only if you intend to replace history.
+GitHub does **not** accept account passwords over HTTPS anymore. Use one of these:
+
+- **Git Credential Manager** (often installed with Git for Windows): the first `git push` may open a browser to sign in to GitHub.
+- **Personal Access Token (classic):** [GitHub → Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens) → generate with **repo** scope. When `git` asks for a password, paste the token.
+
+If you see `remote origin already exists`, skip `git remote add` — only run `git push -u origin main`.
+
+If the remote already has commits you need to keep, use `git pull origin main --rebase` before pushing instead of force-pushing.
 
 ### 3) Deploy on Railway
 
